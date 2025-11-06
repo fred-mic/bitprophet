@@ -1,0 +1,17 @@
+{
+    "name": "data-ingester",
+    "module": "index.js",
+    "type": "module",
+    "scripts": {
+        "dev": "wrangler dev",
+        "deploy": "wrangler deploy"
+    },
+    "private": true,
+    "devDependencies": {
+        "wrangler": "^4.45.3"
+    },
+    "dependencies": {
+        "axios": "^1.13.2",
+        "pg": "^8.16.3"
+    }
+}
