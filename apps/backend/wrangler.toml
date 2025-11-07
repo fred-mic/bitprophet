@@ -4,6 +4,14 @@ minify = true
 compatibility_date = "2025-04-01"
 compatibility_flags = [ "nodejs_compat" ]
 
+# The `observability` object becomes a table in TOML
+[observability]
+enabled = true
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "3f04699e64e94831b465c68649857454"
+
 [env]
 BUN_VERSION = "1.3.1"
 SKIP_DEPENDENCY_INSTALL = 1

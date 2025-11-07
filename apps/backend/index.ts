@@ -2,23 +2,28 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { Candlestick } from "@repo/types";
 
-const app = new Hono();
+type Env = {
+  HYPERDRIVE: {
+    connectionString: string;
+  };
+};
+
+const app = new Hono<{ Bindings: Env }>();
 app.use("*", cors());
 
-// Postgres connection using Bun.sql
-const DATABASE_URL = process.env.DATABASE_URL;
-
-// Use Bun.sql tagged template. Bun uses DATABASE_URL automatically.
-const sql = (Bun as any).sql;
-if (!sql) {
-  throw new Error("Bun.sql is not available. Ensure you're running with Bun and have a valid DATABASE_URL.");
-}
-
-// Open a connection eagerly and fail fast if not reachable
-await sql`SELECT 1`;
-
 app.get('/api/latest', async (c) => {
+  // Set DATABASE_URL from HYPERDRIVE binding if available
+  if (c.env.HYPERDRIVE?.connectionString) {
+    process.env.DATABASE_URL = c.env.HYPERDRIVE.connectionString;
+  }
+
   const symbol = c.req.query('symbol') || 'BTCUSDT';
+
+  // Use Bun.sql tagged template
+  const sql = (Bun as any).sql;
+  if (!sql) {
+    throw new Error("Bun.sql is not available.");
+  }
 
   // Query for the most recent 1-minute candle using Bun.sql
   const result = await sql`
@@ -57,8 +62,5 @@ app.get('/api/latest', async (c) => {
 
   return c.json(candlesticks);
 });
-
-
-
 
 export default app;

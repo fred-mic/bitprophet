@@ -65,6 +65,7 @@ const App = () => {
       try {
         if (isInitial) setLoading(true);
         const response = await fetch(
+          //"http://localhost:3001/api/latest?symbol=BTCUSDT"
           "https://bitprohet-backend.fred-fa4.workers.dev/api/latest?symbol=BTCUSDT"
         );
 
