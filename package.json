@@ -5,13 +5,17 @@
     "dev": "turbo run dev --parallel",
     "build": "turbo run build",
     "check-types": "turbo run check-types",
-    "deploy": "wrangler deploy"
+    "deploy": "dotenv -e .env -- turbo run deploy --parallel",
+    "deploy:backend": "dotenv -e .env -- turbo run deploy --filter=backend",
+    "deploy:data-ingester": "dotenv -e .env -- turbo run deploy --filter=data-ingester",
+    "deploy:frontend": "dotenv -e .env -- turbo run deploy --filter=frontend"
   },
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "devDependencies": {
+    "dotenv-cli": "^11.0.0",
     "turbo": "^2.6.0",
     "typescript": "5.9.2"
   },

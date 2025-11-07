@@ -4,6 +4,7 @@
     "type": "module",
     "scripts": {
         "dev": "wrangler dev",
+        "build": "bun build index.js --outdir=dist --target bun --sourcemap=inline",
         "deploy": "wrangler deploy"
     },
     "private": true,

@@ -4,11 +4,15 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".bun", "dist/**", "build/**"],
+      "outputs": [".bun", "dist/**", ".wrangler/**"],
       "cache": true
     },
     "check-types": {
       "dependsOn": ["^check-types"]
+    },
+    "deploy": {
+      "cache": false,
+      "dependsOn": ["build"]
     },
     "dev": {
       "persistent": true,

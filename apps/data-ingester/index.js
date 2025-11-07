@@ -1,5 +1,4 @@
 const { Client } = require('pg');
-const axios = require('axios');
 
 
 export default {
@@ -47,7 +46,11 @@ async function ingestLatestMinuteData(env) {
       
     
     const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m&limit=${limit}`;
-    const response = await axios.get(url);
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
 
     // SQL with UPSERT to prevent duplicates
     const query = `
@@ -67,7 +70,7 @@ async function ingestLatestMinuteData(env) {
     `;
 
     // Loop through all klines in the response
-    for (const kline of response.data) {
+    for (const kline of data) {
       const dataPoint = {
         symbol: symbol,
         open_time: new Date(kline[0]).toISOString(), // Use ISO 8601 strings
@@ -89,7 +92,7 @@ async function ingestLatestMinuteData(env) {
     }
 
     await dbClient.end();
-    console.log(`Successfully ingested ${response.data.length} data point(s)`);
+    console.log(`Successfully ingested ${data.length} data point(s)`);
 
   } catch (error) {
     console.error('Error during data ingestion:', error.message);

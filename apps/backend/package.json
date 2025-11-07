@@ -1,9 +1,10 @@
 {
-  "name": "hono-todo backend",
+  "name": "backend",
   "module": "index.ts",
   "type": "module",
   "scripts": {
     "dev": "PORT=3001 bun run --hot index.ts",
+    "build": "bun --bun build ./index.ts --outdir=dist --target bun --sourcemap=inline",
     "deploy": "wrangler deploy"
   },
   "private": true,

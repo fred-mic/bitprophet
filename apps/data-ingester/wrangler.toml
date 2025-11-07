@@ -1,24 +1,19 @@
-name = "binance-ingestor"
+name = "bitprophet-ingestor"
 main = "index.js"
-compatibility_date = "2024-09-23"
+compatibility_date = "2025-04-01"
 compatibility_flags = [ "nodejs_compat" ]
 
 # The `observability` object becomes a table in TOML
 [observability]
 enabled = true
 
+[placement]
+mode = "smart"
 
-# The `hyperdrive` array of objects becomes an array of tables in TOML
-# Each element in the JSON array is represented by a [[hyperdrive]] block
 [[hyperdrive]]
 binding = "HYPERDRIVE"
-id = "3f04699e64e94831b465c68649857454"
+id = "7c9455e046a646188ec8e6450256d932"
 
 [triggers]
 # The cron syntax is standard. This runs at the start of every minute.
 crons = ["* * * * *"]
-
-#[vars]
-# Store your database URL in an encrypted secret, not here!
-# Use `wrangler secret put DATABASE_URL`
-#DATABASE_URL = "your_postgres_connection_string"
