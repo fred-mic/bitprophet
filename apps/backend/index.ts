@@ -1,66 +1,130 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { Candlestick } from "@repo/types";
+import { Pool } from "pg";
 
-type Env = {
-  HYPERDRIVE: {
-    connectionString: string;
-  };
-};
-
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono();
 app.use("*", cors());
 
-app.get('/api/latest', async (c) => {
-  // Set DATABASE_URL from HYPERDRIVE binding if available
-  if (c.env.HYPERDRIVE?.connectionString) {
-    process.env.DATABASE_URL = c.env.HYPERDRIVE.connectionString;
-  }
+// Initialize PostgreSQL connection pool with SSL configuration
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error("DATABASE_URL environment variable is required");
+}
 
-  const symbol = c.req.query('symbol') || 'BTCUSDT';
-
-  // Use Bun.sql tagged template
-  const sql = (Bun as any).sql;
-  if (!sql) {
-    throw new Error("Bun.sql is not available.");
-  }
-
-  // Query for the most recent 1-minute candle using Bun.sql
-  const result = await sql`
-    SELECT 
-      open_time,
-      open_price,
-      high_price,
-      low_price,
-      close_price,
-      base_volume
-    FROM ohlc_1m
-    WHERE symbol = ${symbol}
-    ORDER BY open_time DESC
-    LIMIT 1440
-  `;
-
-  if (result.length === 0) {
-    return c.json({ error: 'No data found' }, 404);
-  }
-
-  // Transform database results to Candlestick type
-  const candlesticks: Candlestick[] = result.map((row: any) => {
-    const openTime = new Date(row.open_time);
-    const hours = openTime.getHours().toString().padStart(2, '0');
-    const minutes = openTime.getMinutes().toString().padStart(2, '0');
-    
-    return {
-      time: `${hours}:${minutes}`,
-      open: Number(row.open_price),
-      high: Number(row.high_price),
-      low: Number(row.low_price),
-      close: Number(row.close_price),
-      volume: Number(row.base_volume),
-    };
-  });
-
-  return c.json(candlesticks);
+const pool = new Pool({
+  connectionString
 });
 
-export default app;
+// Test connection on startup and wait for it before starting server
+let dbReady = false;
+pool.query('SELECT 1')
+  .then(() => {
+    console.log("Database connection pool established");
+    dbReady = true;
+  })
+  .catch((err) => {
+    console.error("Failed to connect to database:", err);
+    console.error("Connection string (masked):", connectionString.replace(/:[^:@]+@/, ':****@'));
+    process.exit(1);
+  });
+
+// Health check endpoint
+app.get('/health', async (c) => {
+  if (!dbReady) {
+    return c.json({ status: 'initializing', database: 'connecting' }, 503);
+  }
+  
+  try {
+    await pool.query('SELECT 1');
+    return c.json({ status: 'healthy', database: 'connected' });
+  } catch (error: any) {
+    return c.json({ status: 'unhealthy', database: 'error', error: error.message }, 503);
+  }
+});
+
+// Resolution to database view/table mapping
+const resolutionToViewMap: Record<string, string> = {
+  '1m': 'public.ohlc_1m',
+  '15m': 'public.ohlc_15m_summary',
+  '1h': 'public.ohlc_1h_summary',
+  // You can easily add more later, e.g., '4h': 'public.ohlc_4h_summary'
+};
+
+app.get('/api/v1/candles/:symbol', async (c) => {
+  const symbol = c.req.param('symbol');
+  const resolution = c.req.query('resolution') || '1h';
+  const limit = parseInt(c.req.query('limit') || '24', 10);
+
+  // Validate resolution
+  if (!resolutionToViewMap[resolution]) {
+    return c.json({ 
+      error: 'Invalid resolution', 
+      message: `Resolution must be one of: ${Object.keys(resolutionToViewMap).join(', ')}` 
+    }, 400);
+  }
+
+  // Validate limit
+  if (isNaN(limit) || limit < 1 || limit > 10000) {
+    return c.json({ 
+      error: 'Invalid limit', 
+      message: 'Limit must be a number between 1 and 10000' 
+    }, 400);
+  }
+
+  const tableName = resolutionToViewMap[resolution];
+  // For 1m, use open_time; for aggregates, use bucket_time
+  const timeColumn = resolution === '1m' ? 'open_time' : 'bucket_time';
+
+  try {
+    // Query for candles based on resolution
+    const result = await pool.query(`
+      SELECT 
+        ${timeColumn} as time,
+        open_price,
+        high_price,
+        low_price,
+        close_price,
+        base_volume
+      FROM ${tableName}
+      WHERE symbol = $1
+      ORDER BY ${timeColumn} DESC
+      LIMIT $2
+    `, [symbol, limit]);
+
+    if (result.rows.length === 0) {
+      return c.json({ error: 'No data found' }, 404);
+    }
+
+    // Transform database results to Candlestick type
+    const candlesticks: Candlestick[] = result.rows.map((row: any) => {
+      const time = new Date(row.time);
+      const hours = time.getHours().toString().padStart(2, '0');
+      const minutes = time.getMinutes().toString().padStart(2, '0');
+      
+      return {
+        time: `${hours}:${minutes}`,
+        open: Number(row.open_price),
+        high: Number(row.high_price),
+        low: Number(row.low_price),
+        close: Number(row.close_price),
+        volume: Number(row.base_volume),
+      };
+    });
+
+    return c.json(candlesticks);
+  } catch (error: any) {
+    console.error("Database query error:", error);
+    return c.json({ 
+      error: 'Database error', 
+      message: error.message,
+      code: error.code 
+    }, 500);
+  }
+});
+
+const port = parseInt(process.env.PORT || '3001');
+export default {
+  port,
+  fetch: app.fetch,
+};

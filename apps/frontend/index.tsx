@@ -64,9 +64,9 @@ const App = () => {
     const fetchBitcoinData = async (isInitial = false) => {
       try {
         if (isInitial) setLoading(true);
+        // Use relative path - NGINX will proxy /api/* to backend
         const response = await fetch(
-          //"http://localhost:3001/api/latest?symbol=BTCUSDT"
-          "https://bitprohet-backend.fred-fa4.workers.dev/api/latest?symbol=BTCUSDT"
+          `/api/v1/candles/BTCUSDT?resolution=1m&limit=1440`
         );
 
         if (!response.ok) {

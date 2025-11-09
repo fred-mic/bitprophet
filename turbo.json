@@ -1,25 +1,18 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "globalDependencies": ["bun.lockb"],
+  "globalDependencies": ["bun.lock"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".bun", "dist/**", ".wrangler/**"],
+      "outputs": [".bun", "dist/**"],
       "cache": true
     },
     "check-types": {
       "dependsOn": ["^check-types"]
     },
-    "deploy": {
-      "cache": false,
-      "dependsOn": ["build"]
-    },
     "dev": {
       "persistent": true,
       "cache": false
-    },
-    "frontend#dev": {
-      "dependsOn": ["backend#dev"]
     }
   }
 }

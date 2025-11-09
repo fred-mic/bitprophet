@@ -1,24 +1,25 @@
 const { Client } = require('pg');
 
-
-export default {
-  // The 'scheduled' handler is triggered by the cron setting in wrangler.toml
-  async scheduled(controller, env, ctx) {
-    // The ctx.waitUntil() ensures the Worker script doesn't terminate
-    // before our async database operations are complete.
-    ctx.waitUntil(ingestLatestMinuteData(env));
-  },
-};
-
 // --- Function to Fetch and Insert 1-Minute Data ---
-async function ingestLatestMinuteData(env) {
+async function ingestLatestMinuteData() {
   const symbol = 'BTCUSDT';
   
   // --- Database Configuration ---
-  const dbClient = new Client({ connectionString: env.HYPERDRIVE.connectionString });
+  const connectionString = process.env.DATABASE_URL;
+
+  if (!connectionString) {
+    throw new Error('DATABASE_URL environment variable is required');
+  }
+  
+  const dbClient = new Client({ 
+    connectionString,
+    ssl: {
+      rejectUnauthorized: false, // For cloud providers
+    },
+  });
   
   try {
-    await dbClient.connect();
+    const x = await dbClient.connect();
     
     // Query the last record from ohlc_1m table
     const lastRecordQuery = `
@@ -95,6 +96,53 @@ async function ingestLatestMinuteData(env) {
     console.log(`Successfully ingested ${data.length} data point(s)`);
 
   } catch (error) {
-    console.error('Error during data ingestion:', error.message);
+    const timestamp = new Date().toISOString();
+    const errorDetails = {
+      timestamp,
+      error: {
+        name: error?.name || 'UnknownError',
+        message: error?.message || 'Unknown error occurred',
+        stack: error?.stack || 'No stack trace available',
+        code: error?.code,
+        detail: error?.detail,
+        hint: error?.hint,
+        position: error?.position,
+      },
+      context: {
+        hasConnectionString: !!connectionString,
+        connectionStringLength: connectionString?.length || 0,
+      },
+    };
+
+    console.error('='.repeat(80));
+    console.error(`[${timestamp}] ERROR during data ingestion`);
+    console.error('='.repeat(80));
+    console.error('Error Name:', errorDetails.error.name);
+    console.error('Error Message:', errorDetails.error.message);
+    if (errorDetails.error.code) {
+      console.error('Error Code:', errorDetails.error.code);
+    }
+    if (errorDetails.error.detail) {
+      console.error('Error Detail:', errorDetails.error.detail);
+    }
+    if (errorDetails.error.hint) {
+      console.error('Error Hint:', errorDetails.error.hint);
+    }
+    console.error('\nContext:');
+    console.error('  Has Connection String:', errorDetails.context.hasConnectionString);
+    console.error('\nStack Trace:');
+    console.error(errorDetails.error.stack);
+    console.error('='.repeat(80));
+    
+    // Also log as JSON for structured logging
+    console.error('\nStructured Error Log (JSON):');
+    console.error(JSON.stringify(errorDetails, null, 2));
+    
+    process.exit(1);
   }
+}
+
+// Run if called directly
+if (import.meta.main) {
+  ingestLatestMinuteData();
 }

@@ -3,16 +3,14 @@
     "module": "index.ts",
     "type": "module",
     "scripts": {
-        "dev": "bun --hot index.html",
-        "build": "bun build index.tsx --outdir=dist --target bun --sourcemap=inline",
-        "deploy": "wrangler pages deploy dist"
+        "dev": "bun --serve --hot index.html",
+        "build": "bun build index.tsx --outdir=dist --target browser --minify && cp index.html dist/index.html && sed -i.bak 's|./index.tsx|./index.js|g' dist/index.html && rm -f dist/index.html.bak && ([ -f styles.css ] && cp styles.css dist/styles.css || true)"
     },
     "private": true,
     "devDependencies": {
         "@types/bun": "^1.3.1",
         "@types/react": "^18.2.79",
-        "@types/react-dom": "^18.2.25",
-        "wrangler": "^4.45.3"
+        "@types/react-dom": "^18.2.25"
     },
     "peerDependencies": {
         "typescript": "^5"
