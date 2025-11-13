@@ -3,7 +3,8 @@
     "module": "index.js",
     "type": "module",
     "scripts": {
-        "dev": "bun run index.js"
+        "dev": "bun run index.js",
+        "build": "echo 'Data ingester does not require a build step'"
     },
     "private": true,
     "dependencies": {

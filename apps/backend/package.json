@@ -3,7 +3,8 @@
   "module": "index.ts",
   "type": "module",
   "scripts": {
-    "dev": "PORT=3001 bun run --hot index.ts"
+    "dev": "PORT=3001 bun run --hot index.ts",
+    "build": "echo 'Backend does not require a build step'"
   },
   "private": true,
   "devDependencies": {

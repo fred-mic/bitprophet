@@ -4,7 +4,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".bun", "dist/**"],
+      "outputs": [".bun", "dist/**", "**/*.css"],
       "cache": true
     },
     "check-types": {
