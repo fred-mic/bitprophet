@@ -20,26 +20,32 @@ WORKDIR /app
 # Install NGINX and cron
 RUN apt-get update && apt-get install -y nginx cron && rm -rf /var/lib/apt/lists/*
 
-# Copy built artifacts and source from base
-COPY --from=base /app/apps/frontend/dist ./apps/frontend/dist
-COPY --from=base /app/apps/backend/index.ts ./apps/backend/
-COPY --from=base /app/apps/backend/package.json ./apps/backend/
-COPY --from=base /app/apps/data-ingester/index.js ./apps/data-ingester/
-COPY --from=base /app/apps/data-ingester/package.json ./apps/data-ingester/
-
-# Copy packages, node_modules, and config
-COPY --from=base /app/packages ./packages
-COPY --from=base /app/node_modules ./node_modules
+# Copy workspace structure and lockfile (needed for Bun to resolve dependencies)
 COPY --from=base /app/package.json ./
+COPY --from=base /app/bun.lock ./
+COPY --from=base /app/packages ./packages
 COPY --from=base /app/turbo.json ./
+
+# Copy built artifacts and source files
+COPY --from=base /app/apps/frontend/dist ./apps/frontend/dist
+COPY --from=base /app/apps/backend ./apps/backend
+COPY --from=base /app/apps/data-ingester ./apps/data-ingester
+
+# Copy node_modules LAST (after workspace structure is in place)
+# This ensures workspace symlinks are preserved
+COPY --from=base /app/node_modules ./node_modules
 
 # Copy NGINX configuration
 COPY nginx.conf /etc/nginx/sites-available/default
 
-# Create cron job
-RUN echo "* * * * * cd /app && bun run apps/data-ingester/index.js" > /etc/cron.d/data-ingester && \
-    chmod 0644 /etc/cron.d/data-ingester && \
-    crontab /etc/cron.d/data-ingester
+# Copy wrapper script for data ingester
+COPY apps/data-ingester/run.sh /usr/local/bin/run-data-ingester.sh
+RUN chmod +x /usr/local/bin/run-data-ingester.sh
+
+# Create cron job that sources environment and runs wrapper
+# Note: Cron will read environment from /etc/environment or we'll set it in docker-entrypoint.sh
+RUN echo "* * * * * root /usr/local/bin/run-data-ingester.sh >> /var/log/data-ingester.log 2>&1" > /etc/cron.d/data-ingester && \
+    chmod 0644 /etc/cron.d/data-ingester
 
 EXPOSE 80 3001
 

@@ -9,7 +9,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-
 import type { Candlestick } from "@repo/types";
 
 

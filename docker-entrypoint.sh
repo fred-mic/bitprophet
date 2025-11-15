@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+# Export environment variables to a file that cron can source
+# Cron jobs run with minimal environment, so we need to explicitly pass vars
+env | grep -E '^DATABASE_URL=' > /etc/environment
+
+# Also add to crontab environment
+echo "DATABASE_URL=${DATABASE_URL}" >> /etc/cron.d/data-ingester
+
 # Start cron
 service cron start
 

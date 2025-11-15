@@ -5,9 +5,9 @@
     "scripts": {
         "dev": "bun --serve --hot index.html",
         "prebuild": "mkdir -p dist",
-        "build": "bun run build:js && bun run build:css && bun run build:html",
+        "build": "bun run build:css && bun run build:js && bun run build:html",
+        "build:css": "bunx --bun tailwindcss -i ./styles.css -o ./dist/styles.css --minify",
         "build:js": "bun build index.tsx --outdir=dist --target browser --minify",
-        "build:css": "bun build styles.css --outdir=dist --target browser --minify",
         "build:html": "cp index.html dist/index.html && sed -i.bak 's|./index.tsx|./index.js|g' dist/index.html && rm -f dist/index.html.bak"
     },
     "private": true,
